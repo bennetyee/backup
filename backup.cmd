@@ -1,20 +1,36 @@
 #!/bin/bash
 
-# A script to do differential backups.  Backups performed at different
-# times are kept in separate directories, but if a file has not
-# changed then these directories will share the file via a hard link.
-# This saves disk space.  The assumption is that the backup is done
-# via a removable storage device, e.g., USB external storage.  There
-# is currently no provision to use ssh/rsync to back up to a remote
-# machine, though this may be added in the future.  After backing up
-# one's home directory, the assumption is that the external storage
-# device will be unmounted, removed, and stored somewhere safe,
-# possibly away from the computer to avoid common mode failures such
-# as physical damage scenarios.
+# A script to do a cheap form of differential backups.  Backups
+# performed at different times are kept in separate directories, but
+# if a file has not changed then these directories will share the file
+# via a hard link.  This saves disk space.  The assumption is that the
+# backup is done via a removable storage device, e.g., USB external
+# storage.  There is currently no provision to use ssh/rsync to back
+# up to a remote machine, though this may be added in the future.
+# After backing up one's home directory, the assumption is that the
+# external storage device will be unmounted, removed, and stored
+# somewhere safe, possibly away from the computer to avoid common mode
+# failures such as physical damage scenarios.
+
+# BUG: The rsync -a flag does not imply -H, so hardlinks within each
+# filesystem subtree being backed up are not preserved.  Some
+# experimentation needs to be done to see how -H interacts with cp
+# -al, since the link count for files in the backup directory will
+# differ from the source.
+
+# BUG: Currently we just drop a file with the current time in the
+# destination directory.  Better backup management could be done in
+# addition to the MAXBACKUPS, so that weekly backups, monthly backups,
+# etc, can have their own maximums, and external disk identities could
+# be recorded e.g. in the directory being backed up to help with disk
+# rotation.  It's unclear whether the complexity is worth it, but it's
+# something to consider.
 
 u=${USER:-$(whoami)}
 media=${1:-"/media/$u/backup"}
 shift
+
+OS=$(uname -s)
 
 dest=${media}/${u}/$(hostname)/backup
 digits=3
@@ -37,10 +53,17 @@ EXCLUDES=${EXCLUDES:-"--exclude=/.Private \
 # BUG: if MAXBACKUP is more than 3 digits, then we overflow the printf
 # format, and some names will use 3 digits and others will be 4.
 
-# rest of argument list is a list of source directories to back up.
+# The rest of argument list is a list of source directories to back up.
+# Default is the home directory
 if [ "$*" = '' ]
 then
-	set /home/$u /mm/$u
+	if [ $OS == Linux ]
+	then
+		set /home/$u
+	elif [ $OS == Darwin ]
+	then
+	     set /Users/$u
+	fi
 fi
 
 for d
@@ -142,31 +165,41 @@ done
 
 [ $VERBOSE -ge 1 ] && printf 'Done.\n'
 
-# Suggest how to unmount the external drive.  Not done automatically,
-# in case the user wants to look around, or if the drive is a "hot"
-# backup also used for other things.
+# Maybe this should only be done w/ verbose set?
+if [ $OS == Linux ]
+then
+	# Suggest how to unmount the external drive.  Not done
+	# automatically, in case the user wants to look around, or if
+	# the drive is a "hot" backup also used for other things.
 
-info=$(mount | grep "$media")
-case "$info" in
-/dev/mapper*)
-	# echo "LUKS encrypted filesystem"
-	luks=$(lsblk | grep -B2 -A0 -F "$media")
-	# echo "$luks"
-	bdev=/dev/$(echo "$luks" | head -1 | sed 's/[ \t].*//')
-	;;
-/dev/sd*)
-	# echo "Non-encrypted filesystem"
-	# echo "$info"
-	bdev=$(echo "$info" | sed 's/[0-9]*[ \t].*//')
-	;;
-*)
-	printf 'No guesses on how backup media is mounted\n'
-	printf ' device: %s\n' "$info"
-	;;
-esac
+	info=$(mount | grep "$media")
+	case "$info" in
+	/dev/mapper*)
+		# echo "LUKS encrypted filesystem"
+		luks=$(lsblk | grep -B2 -A0 -F "$media")
+		# echo "$luks"
+		bdev=/dev/$(echo "$luks" | head -1 | sed 's/[ \t].*//')
+		;;
+	/dev/sd*)
+		# echo "Non-encrypted filesystem"
+		# echo "$info"
+		bdev=$(echo "$info" | sed 's/[0-9]*[ \t].*//')
+		;;
+	*)
+		printf 'No guesses on how backup media is mounted\n'
+		printf ' device: %s\n' "$info"
+		;;
+	esac
 
-printf 'You should run something like:\n'
-printf ' pumount %s\n' "$media"
-printf ' udisksctl power-off -b %s\n' "${bdev:-'block-device'}" # /dev/sdc
-printf 'before unplugging the external drive.\n'
+	printf 'You should run something like:\n'
+	printf ' pumount %s\n' "$media"
+	printf ' udisksctl power-off -b %s\n' "${bdev:-'block-device'}" # /dev/sdc
+	printf 'before unplugging the external drive.\n'
+elif $OS == Darwin
+then
+	printf 'You should safely unmount the external drive using Disk Utility or diskutil.\n'
+else
+	printf 'Unknown OS.  You should safely unmount the external drive before unplugging it.\n'
+fi
+
 exit $status
