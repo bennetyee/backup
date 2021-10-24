@@ -172,7 +172,7 @@ then
 		luks=$(lsblk | grep -B2 -A0 -F "$media")
 		# echo "$luks"
 		bdev=/dev/$(echo "$luks" | head -1 | sed 's/[ \t].*//')
-		part=/dev/$(echo "$luks" | sed -n '1d;2d;s/^..//;s/ .*//;p')
+		part=/dev/$(echo "$luks" | sed -n '1d;3d;s/^..//;s/ .*//;p')
 		printf ' udisksctl lock -b %s\n' "$part"
 		;;
 	/dev/sd*)
