@@ -107,6 +107,24 @@ function backup() {
 		printf 'cabackup: backup source %s is not a directory\n' "$src_dir" >&2
 		return 1
 	fi
+	d=$(dirname "$castore")
+	if ! [ -d "${d}" ]
+	then
+		if [ $VERBOSE -gt 0 ]
+		then
+			printf 'cabackup: creating content addressable store directory %s\n' "${d}" >&2
+		fi
+		mkdir -p "${d}"
+	fi
+	d=$(dirname "$caidx")
+	if ! [ -d ${d} ]
+	then
+		if [ $VERBOSE -gt 0 ]
+		then
+			printf 'cabackup: creating content addressable index directory %s\n' "${d}" >&2
+		fi
+		mkdir -p "${d}"
+	fi
 	verbose=""
 	if [ $VERBOSE -gt 2 ]
 	then
