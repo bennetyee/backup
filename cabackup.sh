@@ -162,6 +162,9 @@ then
 	# automatically, in case the user wants to look around, or if
 	# the drive is a "hot" backup also used for other things.
 
+	printf 'You should run something like:\n'
+	printf ' pumount %s\n' "$media"
+
 	info=$(mount | grep "$media")
 	case "$info" in
 	/dev/mapper*)
@@ -169,6 +172,8 @@ then
 		luks=$(lsblk | grep -B2 -A0 -F "$media")
 		# echo "$luks"
 		bdev=/dev/$(echo "$luks" | head -1 | sed 's/[ \t].*//')
+		part=/dev/$(echo "$luks" | sed -n '1d;2d;s/^..//;s/ .*//;p')
+		printf ' udisksctl lock -b %s\n' "$part"
 		;;
 	/dev/sd*)
 		# echo "Non-encrypted filesystem"
@@ -181,8 +186,6 @@ then
 		;;
 	esac
 
-	printf 'You should run something like:\n'
-	printf ' pumount %s\n' "$media"
 	printf ' udisksctl power-off -b %s\n' "${bdev:-'block-device'}" # /dev/sdc
 	printf 'before unplugging the external drive.\n'
 elif $OS == Darwin
