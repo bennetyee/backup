@@ -9,7 +9,13 @@
 # fills up, we just delete old backups, which in the case of a
 # content-addressable storage will be via garbage collection (casync
 # gc --store castr caidx... where the caidx are storage-roots that we
-# want to retain.
+# want to retain).  Since we keep per-host caidx files, this means
+# removing the old caidx files, then running
+#
+#  cd $(dirname "$castore") && casync gc --store "$castore" */*.caidx
+#
+# to ensure that there are no chunks from other data sources
+# (hostname) accidentally deleted and backups invalidated.
 #
 # Because we may back up multiple computers on a single drive, we use
 # a common castr directory to maximize the content-addressable storage
@@ -39,6 +45,13 @@
 u=${USER:-$(whoami)}
 media=${1:-"/media/$u/backup"}
 shift
+
+# Remove trailing / -- leaving it will cause the mount | grep to fail
+case "$media" in
+*/)
+	media=$(echo "$media" | sed 's/.$//')
+	;;
+esac
 
 set -e
 

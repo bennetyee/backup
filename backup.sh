@@ -30,6 +30,15 @@ u=${USER:-$(whoami)}
 media=${1:-"/media/$u/backup"}
 shift
 
+# Remove trailing / -- leaving it will cause the mount | grep to fail
+case "$media" in
+*/)
+	media=$(echo "$media" | sed 's/.$//')
+	;;
+esac
+
+# set -e
+
 OS=$(uname -s)
 
 dest=${media}/${u}/$(hostname)/backup
