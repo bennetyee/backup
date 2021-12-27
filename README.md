@@ -27,7 +27,7 @@ The defaults for the mountpoint is for an external drive named
 `backup` and home directory locations is for Ubuntu.  So running
 
 ```
-$ git/backup/backup.sh
+$ git-repo-dir/backup/backup.sh
 ```
 
 will back up `/home/bsy` (for me) to
@@ -66,6 +66,21 @@ collisions with a cryptographic hash function, is content-addressible
 storage.  This means that two files that are different but mostly
 identical should have many identical blocks, so the actual storage
 used is reduced.
+
+To run `cabackup.sh`, type in
+
+```
+$ git-repo-dir/backup/cabackup.sh
+```
+
+which will back up `/home/bsy` of the `bsy` account on the machine
+named `machine` into a common content-addressible store at
+`/media/bsy/backup/bsy/default.castr`, with the per-file hash data in
+`/meida/bsy/backup/bsy/machine/2021-12-23T12:34:56-08:00` (directory
+name is output of `date -Isec`).  A common content-addressible store
+means that backing up multiple machines and multiple user accounts
+(assuming external storage permissions allow it) would enable sharing
+of the content-addressible chunk files.
 
 Note that `cabackup.sh` is slower than `backup.sh`, because of the
 hashing overhead, even though there should be far less I/O bandwidth
