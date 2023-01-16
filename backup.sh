@@ -27,6 +27,13 @@
 # something to consider.
 
 u=${USER:-$(whoami)}
+full_backup=0
+case "$1" in
+	-f)
+		full_backup=1
+		shift
+		;;
+esac
 media=${1:-"/media/$u/backup"}
 shift
 
@@ -119,13 +126,13 @@ function backup() {
 	# directory, changing the max number of backup to save, etc.
 	new_dir="$target_dir/backup.new.$$"
 	most_recent="$target_dir/backup.$(printf %0${digits}d 0)"
-	if [ -d "$most_recent" ]
+	if [ -d "$most_recent" ] && [ "$full_backup" -eq 0 ]
 	then
 		cp -al "$most_recent" "$new_dir"
 	else
 		[ $VERBOSE -ge 1 ] && printf 'Not previously backed up'
 	fi
-	rsync -a --delete "$@" "$src_dir/" "$new_dir/"
+	rsync -aH --delete "$@" "$src_dir/" "$new_dir/"
 
 	# Create a timestamp file, so when the backup is done is obvious.
 	touch "$new_dir/BACKUP.$(date -Isec)"
